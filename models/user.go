@@ -10,7 +10,13 @@ type User struct {
 	Email          string
 	HashedPassword string
 	Username       string
+	Gender 		   *string
 }
+
+const (
+	Male   = "male"
+	Female = "female"
+)
 
 const (
 	passwordLength = 8
@@ -142,4 +148,11 @@ func UpdateUser(user *User, email, currentPassword, newPassword string) (User, e
 	user.HashedPassword = string(hashedPassword)
 
 	return out, err
+}
+
+func UpdateExtraInfo(user *User, gender string) (User, error) {
+	out := *user
+	out.Gender = &gender
+
+	return out, nil
 }

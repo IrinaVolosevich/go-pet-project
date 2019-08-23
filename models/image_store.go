@@ -14,6 +14,10 @@ type DBImageStore struct {
 	db *sql.DB
 }
 
+func (store *DBImageStore) FindByUsername(user *User, offset int) ([]Image, error) {
+	panic("implement me")
+}
+
 func (store *DBImageStore) Save(image *Image) error {
 	_, err := store.db.Exec(
 		"REPLACE INTO images (id, user_id, name, location, description, size, created_at) "+
@@ -118,13 +122,7 @@ func (store *DBImageStore) FindAllByUser(user *User, offset int) ([]Image, error
 }
 
 func init() {
-	store, err := NewFileUserStore("./assets/users.json")
-
-	if err != nil {
-		panic(fmt.Errorf("Error creating user store: %s", err))
-	}
-
-	GlobalUserStore = store
+	GlobalUserStore = NewDBUserStore()
 
 	sessionStore, err := NewFileSessionStore("./../assets/sessions.json")
 

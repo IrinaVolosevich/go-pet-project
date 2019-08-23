@@ -5,6 +5,7 @@ import (
 	"go-layouts/models"
 	"go-layouts/templates"
 	"net/http"
+	"strings"
 )
 
 func HandleUserNew(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -55,6 +56,8 @@ func HandleUserEdit(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 
 	pkg.RenderTemplate(w, r, "users/edit", map[string]interface{}{
 		"User": user,
+		"isMale": strings.EqualFold(*user.Gender,"male"),
+		"isFemale": strings.EqualFold(*user.Gender,"female"),
 	})
 }
 
@@ -64,8 +67,10 @@ func HandleUserUpdate(w http.ResponseWriter, r *http.Request, params httprouter.
 	email := r.FormValue("email")
 	currentPassword := r.FormValue("currentPassword")
 	newPassword := r.FormValue("newPassword")
+	gender := r.FormValue("gender")
 
 	user, err := models.UpdateUser(currentUser, email, currentPassword, newPassword)
+	user, err = models.UpdateExtraInfo(currentUser, gender)
 
 	if err != nil {
 		if models.IsValidationError(err) {
@@ -80,7 +85,7 @@ func HandleUserUpdate(w http.ResponseWriter, r *http.Request, params httprouter.
 		panic(err)
 	}
 
-	err = models.GlobalUserStore.Save(*currentUser)
+	err = models.GlobalUserStore.Save(user)
 
 	if err != nil {
 		panic(err)

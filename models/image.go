@@ -29,7 +29,7 @@ type ImageStore interface {
 	Save(image *Image) error
 	Find(id string) (*Image, error)
 	FindAll(offer int) ([]Image, error)
-	FindAllByUser(user *User, offset int) ([]Image, error)
+	FindByUsername(user *User, offset int) ([]Image, error)
 }
 
 func NewImage(user *User) *Image {

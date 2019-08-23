@@ -76,7 +76,7 @@ func RequestUser(r *http.Request) *User {
 		return nil
 	}
 
-	user, err := GlobalUserStore.Find(session.ID)
+	user, err := GlobalUserStore.Find(session.UserID)
 
 	if err != nil {
 		panic(err)

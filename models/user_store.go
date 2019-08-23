@@ -1,11 +1,8 @@
 package models
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"strings"
+	"database/sql"
+	"go-layouts/pkg/mysql"
 )
 
 type UserStore interface {
@@ -15,99 +12,105 @@ type UserStore interface {
 	Save(User) error
 }
 
-type FileUserStore struct {
-	filename string
-	Users    map[string]User
+type DBUserStore struct {
+	db *sql.DB
 }
 
-func (store FileUserStore) Save(user User) error {
-	store.Users[user.ID] = user
+func (store *DBUserStore) Find(id string) (*User, error) {
+	row := store.db.QueryRow(
+		"SELECT id, email, password, name, gender "+
+			"FROM users WHERE id = ? ORDER BY created_at",
+		id)
 
-	contents, err := json.MarshalIndent(store, "", " ")
+	user := User{}
+	err := row.Scan(
+		&user.ID,
+		&user.Email,
+		&user.HashedPassword,
+		&user.Username,
+		&user.Gender,
+	)
 
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(store.filename, contents, 0660)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (store FileUserStore) Find(id string) (*User, error) {
-	user, ok := store.Users[id]
-
-	if ok {
-		return &user, nil
-	}
-
-	return nil, nil
-}
-
-func (store FileUserStore) FindByUsername(username string) (*User, error) {
-	if username == "" {
+	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 
-	for _, user := range store.Users {
-		if strings.ToLower(username) == strings.ToLower(user.Username) {
-			return &user, nil
-		}
-	}
-
-	return nil, nil
+	return &user, err
 }
 
-func (store FileUserStore) FindByEmail(email string) (*User, error) {
-	if email == "" {
+func (store *DBUserStore) FindByEmail(email string) (*User, error) {
+	row := store.db.QueryRow(
+		"SELECT id, email, password, name, gender "+
+			"FROM users WHERE email = ? ORDER BY created_at",
+		email)
+
+	user := User{}
+	err := row.Scan(
+		&user.ID,
+		&user.Email,
+		&user.HashedPassword,
+		&user.Username,
+		&user.Gender,
+	)
+
+	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 
-	for _, user := range store.Users {
-		if strings.ToLower(email) == strings.ToLower(user.Email) {
-			return &user, nil
-		}
-	}
-
-	return nil, nil
+	return &user, err
 }
 
-func NewFileUserStore(filename string) (*FileUserStore, error) {
-	store := &FileUserStore{
-		Users:    map[string]User{},
-		filename: filename,
+func (store *DBUserStore) FindByUsername(username string) (*User, error) {
+	row := store.db.QueryRow(
+		"SELECT id, email, password, name, gender "+
+			"FROM users WHERE name = ? ORDER BY created_at",
+		username)
+
+	user := User{}
+	err := row.Scan(
+		&user.ID,
+		&user.Email,
+		&user.HashedPassword,
+		&user.Username,
+		&user.Gender,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
 	}
 
-	contents, err := ioutil.ReadFile(filename)
+	return &user, err
+}
 
-	if err != nil {
-		if os.IsNotExist(err) {
-			return store, nil
-		}
-
-		return nil, err
+func NewDBUserStore() UserStore {
+	return &DBUserStore{
+		db: mysql.GlobalMySQLDB,
 	}
+}
 
-	err = json.Unmarshal(contents, store)
-	if err != nil {
-		return nil, err
-	}
+func (store *DBUserStore) Save(user User) error {
+	_, err := store.db.Exec(
+		"REPLACE INTO users (id, name, password, email, gender) "+
+			"VALUES(?, ?, ?, ?, ?)",
+			user.ID,
+		user.Username,
+		user.HashedPassword,
+		user.Email,
+		*user.Gender)
 
-	return store, nil
+	return err
 }
 
 var GlobalUserStore UserStore
 
 func init() {
-	store, err := NewFileUserStore("./../assets/users.json")
+	db, err := mysql.NewMySQLDB("dev_main:kr4e65a2xJ9@tcp(localhost:3312)/dev_main")
 
 	if err != nil {
-		panic(fmt.Errorf("Error creating user store: %s", err))
+		panic(err)
 	}
 
-	GlobalUserStore = store
+	mysql.GlobalMySQLDB = db
+
+	GlobalUserStore = NewDBUserStore()
 }
